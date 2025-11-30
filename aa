@@ -1,0 +1,295 @@
+local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
+local Players = game:GetService("Players")
+
+local CONFIG = {
+    apiUrl = "https://apisk.lovable.app",
+    
+    minProduction = 1000000, -- 1M mínimo
+    
+    targetPetNames = {
+        "Boneca Ambulosa", "Shielito Samlito", "Gangster Poolers", "Bit Us Ten Paulspam",
+        "Briri Briri Bicus Dicus Bombicus", "Brutto Gialutto", "Bulbito Bandito Traktorito",
+        "Capi Taco", "Matteo", "Caramello Filtrello", "Carloo", "Carrotini Brainini",
+        "Cavallo Virtuoso", "Chachechi", "Noobini Pizzanini", "Buho de Fuego",
+        "Chiuanini Taconini", "Chimpanini Bananini", "Pipi Kiwi", "Cocosini Mama",
+        "Crabbo Limonetta", "Elefento Frigo", "Espresso Signora", "Extinct Ballerina",
+        "Extinct Matteo", "Extinct Tralalero", "Orcalero Orcala", "Fragola La La La",
+        "Frigo Camelo", "Ganganzelli Trulala", "Garama and Madundung", "Spooky and Pumpky",
+        "Gattatino Nyanino", "Gattito Tacoto", "Gorillo Subwoofero", "Gorillo Matematondrilalo",
+        "Grapbus Medussi", "Guerrito Digitale", "Job Job Sahur", "Karkerkae Kurkur",
+        "Ketchuru and Musturu", "Ketupat Kepat", "La Cuaracha", "La Extinct Grande",
+        "La Grande Combinasion", "La Karkerkar Combinasion", "La Supreme Combinasion",
+        "Los Crocodillitos", "Las Capuchinos", "Pluriflura", "Los Tralaleritas",
+        "Burbaloni Lolilolli", "Los Combinasionas", "Los Hotspotsitos", "Los Chicleteiras",
+        "Las Vaquitas Saturnitas", "Los Noobinis", "Girafa Celestre", "Las Sis",
+        "Los Matteos", "Los Tipi Tacos", "Los Orcalitos", "Los Bros", "Los Bombinitos",
+        "Zibra Zubra Zibrellini", "Malame Amarele", "Mangolini Parrocini", "Mariachi Corazoni",
+        "Mastodontic Telepiedone", "Urubini Flamenguini", "Nooo My Hotspot", "Nucleafo Dinossauro",
+        "Bandito Bobritto", "Chillin Chili", "Alessio", "Orcalita Orcala", "Pandaccini Bananini",
+        "Penguino Cocosino", "Perochello Lemonchello", "Pi Pi Watermelon", "Piccione Macchina",
+        "Pipi Avocado", "Pipi Coini", "Pipi Potato", "Pot Hotspot", "Quesadilla crocodila",
+        "Raccooni Jandelini", "Rhino Helicopterino", "Rhino Toasterino", "Salamino Penguino",
+        "Sammyni Spyderini", "Los Spyderinis", "Sigma Boy", "Sigma Girl", "Signore Carapace",
+        "Spaghetti Tualetti", "Stiawberrelli Flamingelli", "Tim Cheese", "Svinina Bombardino",
+        "Chef Crabiacadabra", "Tukanno Bananno", "Tacorita Bicicletla", "Tartapuga Cisterna",
+        "Tigroligre Frutonni", "Cocofanto Elefanto", "Tipi Topi Taco", "Tirilikalika Tirilikalako",
+        "Torrtuginni Dragonfrutini", "Tractoro Dinosauro", "Trialero", "Tralalero Tralala",
+        "Trenosturuzzo Turbo 3000", "Trenosturuzzo Turbo 4000", "Cappuccino Assassino",
+        "Strawberry Elephant", "Mythic Lucky Block", "Nooo my Candy", "Brainrot God Lucky Block",
+        "Taco Lucky Block", "Admin Lucky Block", "Toiletto Focaccino", "Brasilini Berimbini",
+        "Los Primos", "Karker Sahur", "Los Tacoritas", "Pearrito Buratito", "Brr Brr Patapim",
+        "Pop Pop Sahur", "Bananito Bandido", "La Secret Combinasion", "Los Jobcitos", "Los Tortus",
+        "Los 67", "Los Karkeritos", "Squalanana", "Cachorrito Melonito", "Los Lucky Blocks",
+        "Burguro And Favuro", "Evilledon", "Zombie Trialala", "Jacko Spaventosa", "Los Mobilis",
+        "Chicleteirina Bicicleteirina", "La Spooky Grande", "Vulturino Skeletonon", "Tartaragno",
+        "Pinealotto Fruttarino", "Vampira Cappucina", "Quackula", "Mummio Rappitto", "Jacko Jack Jack",
+        "Magi Ribbitini", "Frankentteo", "Chicleteira Bicicleteira", "Headless Horseman",
+        "Frogato Pirato", "Bambu Bambu Sahur", "Bananita Dolphinito", "Meowl", "Horegini Boom",
+        "Quesadillo Vampiro", "Chipso and Queso", "Mummy Amabalabu", "Jackorilla", "Trickolino",
+        "Secret Lucky Block", "Los Spooky Combinasionas", "Telemorte", "Cappuccino Clownino",
+        "Pot Pumpkin", "Pumpkini Spyderini", "La Casa Boo", "Spooky Lucky Block", "Burrito Bandito",
+        "La Taco Combinasion", "Friio Ninja", "Wombo Rollo", "Guest 666", "1x1x1x1", "Aquanaut",
+        "Capitano Moby", "Secret"
+    }
+}
+
+-- Verifica se é um pet target
+local function isTarget(name)
+    if not name or name == "" or name == "?" then return false end
+    for _, target in ipairs(CONFIG.targetPetNames) do
+        if name == target then return true end
+    end
+    return false
+end
+
+-- Extrai valor da produção
+local function extractValue(text)
+    if not text or text == "" then return 0 end
+    
+    -- Remove símbolos e espaços
+    text = string.gsub(text, "[$,]", "")
+    text = string.gsub(text, "%s+", "")
+    
+    -- Tenta extrair número com sufixo
+    local num, suffix = string.match(text, "([%d%.]+)([KMBkmb])")
+    if not num then 
+        -- Tenta apenas número
+        num = string.match(text, "([%d%.]+)")
+        if not num then return 0 end
+        return tonumber(num) or 0
+    end
+    
+    num = tonumber(num)
+    if not num then return 0 end
+    
+    suffix = string.upper(suffix)
+    if suffix == "K" then 
+        return num * 1000
+    elseif suffix == "M" then 
+        return num * 1000000
+    elseif suffix == "B" then 
+        return num * 1000000000
+    end
+    
+    return num
+end
+
+-- Formata produção para enviar à API
+local function formatGeneration(prod)
+    if prod >= 1000000000 then 
+        return string.format("%.2fb", prod / 1000000000)
+    elseif prod >= 1000000 then 
+        return string.format("%.2fm", prod / 1000000)
+    elseif prod >= 1000 then 
+        return string.format("%.2fk", prod / 1000)
+    else 
+        return string.format("%.0f", prod)
+    end
+end
+
+-- Envia para a API (com proteção de erro)
+local function sendToAPI(petName, generation)
+    local success, err = pcall(function()
+        if not request then
+            warn("[API] Função 'request' não disponível no executor")
+            return
+        end
+        
+        local jobId = game.JobId or "unknown"
+        
+        local apiData = {
+            animal = {
+                name = petName,
+                generation = generation
+            },
+            jobId = jobId
+        }
+        
+        local jsonData = HttpService:JSONEncode(apiData)
+        
+        print("Enviado: " .. jsonData)
+        
+        local response = request({
+            Url = CONFIG.apiUrl,
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = jsonData
+        })
+        
+        if response and response.Success then
+            print("[API] ✅ Enviado com sucesso!")
+        else
+            warn("[API] ⚠️ Falha no envio")
+        end
+    end)
+    
+    if not success then
+        warn("[API] Erro ao enviar: " .. tostring(err))
+    end
+end
+
+-- Scan principal (com proteção de erro)
+local function scanPets()
+    print("=== SCANNING PETS ===")
+    
+    local foundPets = {}
+    local totalScanned = 0
+    
+    local success, err = pcall(function()
+        -- Espera o workspace carregar
+        task.wait(3)
+        
+        if not workspace then
+            warn("Workspace não está disponível")
+            return
+        end
+        
+        -- Pega todos os descendentes de uma vez (mais eficiente)
+        local descendants = workspace:GetDescendants()
+        
+        for _, obj in ipairs(descendants) do
+            if obj and obj.Name == "AnimalOverhead" then
+                totalScanned = totalScanned + 1
+                local petValue = 0
+                local petName = ""
+                
+                -- Busca informações do pet
+                for _, child in ipairs(obj:GetChildren()) do
+                    if child and child:IsA("TextLabel") and child.Text then
+                        local text = child.Text
+                        
+                        -- Procura produção ($/s)
+                        if string.find(text, "/s") and string.find(text, "$") then
+                            petValue = extractValue(text)
+                        end
+                        
+                        -- Procura nome do pet
+                        if child.Name == "DisplayName" and text ~= "" then
+                            petName = text
+                        end
+                    end
+                end
+                
+                -- Valida e adiciona se for target
+                if petValue >= CONFIG.minProduction and isTarget(petName) then
+                    local formattedGen = formatGeneration(petValue)
+                    print("🎯 TARGET: " .. petName .. " - " .. formattedGen)
+                    table.insert(foundPets, {name = petName, generation = formattedGen})
+                end
+            end
+        end
+    end)
+    
+    if not success then
+        warn("Erro durante scan: " .. tostring(err))
+    end
+    
+    print("📊 Total scaneado: " .. totalScanned)
+    print("🎯 Targets encontrados: " .. #foundPets)
+    
+    -- Envia cada pet encontrado
+    if #foundPets > 0 then
+        print("📤 Enviando para API...")
+        for _, pet in ipairs(foundPets) do
+            sendToAPI(pet.name, pet.generation)
+            task.wait(0.3)
+        end
+    end
+    
+    return #foundPets > 0
+end
+
+-- Server hop (com proteção de erro)
+local function serverHop()
+    print("🔄 Buscando novo servidor...")
+    
+    local success, err = pcall(function()
+        local player = Players.LocalPlayer
+        local currentJobId = game.JobId
+        local placeId = game.PlaceId
+        
+        -- Tenta buscar lista de servidores
+        local serversSuccess, servers = pcall(function()
+            return HttpService:JSONDecode(game:HttpGet(
+                "https://games.roblox.com/v1/games/" .. placeId .. "/servers/Public?sortOrder=Asc&limit=100"
+            ))
+        end)
+        
+        if serversSuccess and servers and servers.data then
+            local availableServers = {}
+            
+            for _, server in ipairs(servers.data) do
+                if server.id ~= currentJobId and server.playing < server.maxPlayers then
+                    table.insert(availableServers, server.id)
+                end
+            end
+            
+            if #availableServers > 0 then
+                local randomServer = availableServers[math.random(1, #availableServers)]
+                print("✅ Teleportando para: " .. string.sub(randomServer, -8))
+                TeleportService:TeleportToPlaceInstance(placeId, randomServer, player)
+                return
+            end
+        end
+        
+        -- Fallback: teleporte aleatório
+        print("🚀 Teleporte aleatório...")
+        TeleportService:Teleport(placeId, player)
+    end)
+    
+    if not success then
+        warn("Erro no server hop: " .. tostring(err))
+        -- Último recurso
+        pcall(function()
+            TeleportService:Teleport(game.PlaceId, Players.LocalPlayer)
+        end)
+    end
+end
+
+-- EXECUÇÃO PRINCIPAL
+print("=== SCANNER INICIADO ===")
+print("Servidor: " .. string.sub(game.JobId, -8))
+
+-- Aguarda carregamento
+print("🕒 Carregando...")
+task.wait(4)
+
+-- Faz scan
+print("🔍 Scaneando...")
+local found = scanPets()
+
+if found then
+    print("✅ Dados enviados!")
+else
+    print("❌ Nenhum target encontrado")
+end
+
+-- Aguarda antes de teleportar
+task.wait(2)
+
+-- Teleporta
+print("🚀 Mudando servidor...")
+serverHop()
+
+print("🎯 Finalizado!")
