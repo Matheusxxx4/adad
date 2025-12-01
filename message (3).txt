@@ -1,0 +1,322 @@
+local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local CollectionService = game:GetService("CollectionService")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local CoreGui = game:GetService("CoreGui")
+local LocalPlayer = Players.LocalPlayer
+
+if not LocalPlayer then
+	error("Precisa ser LocalScript no cliente!")
+	return
+end
+
+-- ESP Best Animal (Auto-ativado)
+local best_animal_gui = nil
+
+local function parse_value(text)
+	text = text:lower()
+	if text:find("%d+[mkbt]?m? %d+[mkbt]?s?") or (text:find("$") or text:find("/s")) then
+		local num = tonumber(text:match("%d+%.?%d*")) or 0
+		if text:find("k") then num *= 1000
+		elseif text:find("m") then num *= 1000000
+		elseif text:find("b") then num *= 1000000000 end
+		return num
+	end
+	return 0
+end
+
+local function update_best_animal()
+	local plots = workspace:FindFirstChild("Plots")
+	if not plots then return end
+
+	local highest = 0
+	local best = nil
+
+	for _, obj in ipairs(plots:GetDescendants()) do
+		if obj:IsA("BillboardGui") and obj.Name == "AnimalOverhead" then
+			local gen_label = obj:FindFirstChild("Generation", true)
+			if gen_label and gen_label:IsA("TextLabel") then
+				local val = parse_value(gen_label.Text)
+				if val > highest then
+					highest = val
+					best = obj
+				end
+			end
+		end
+	end
+
+	if best and highest > 0 then
+		if best_animal_gui ~= best then
+			if best_animal_gui then
+				best_animal_gui.AlwaysOnTop = false
+				best_animal_gui.Size = UDim2.new(0, 100, 0, 50)
+			end
+			best_animal_gui = best
+			best.AlwaysOnTop = true
+			best.MaxDistance = 9999999
+			best.Size = UDim2.new(0, 300, 0, 150)
+		end
+	elseif best_animal_gui then
+		best_animal_gui.AlwaysOnTop = false
+		best_animal_gui.Size = UDim2.new(0, 100, 0, 50)
+		best_animal_gui = nil
+	end
+end
+
+-- Ativar ESP Best automaticamente
+RunService.Heartbeat:Connect(update_best_animal)
+
+-- Auto Joiner com GUI Estilo SK COMMUNITY
+do
+	local request = (syn and syn.request) or (http and http.request) or http_request or request
+	local function get(url)
+		if type(request) == "function" then
+			local s, r = pcall(function() return request({Url = url, Method = "GET"}).Body end)
+			if s then return r end
+		end
+		local s, r = pcall(HttpService.GetAsync, HttpService, url)
+		if s then return r end
+		return nil
+	end
+
+	local jobids_file = "jobids.txt"
+	local config_file = "aj.txt"
+
+	local function load_min_gen()
+		local data = ""
+		if readfile then pcall(function() data = readfile(config_file) end)
+		elseif isfile and isfile(config_file) then
+			local f = io.open(config_file, "r")
+			if f then data = f:read("*a") f:close() end
+		end
+		if data ~= "" then
+			return tonumber(data:match("%d+")) or 10
+		end
+		if writefile then pcall(function() writefile(config_file, "10\n") end) end
+		return 10
+	end
+
+	local function save_min_gen(val)
+		if writefile then pcall(function() writefile(config_file, tostring(val).."\n") end) end
+	end
+
+	local function load_visited()
+		local data = ""
+		if readfile then pcall(function() data = readfile(jobids_file) end) end
+		local list = {}
+		for line in data:gmatch("[^\n]+") do if line ~= "" then table.insert(list, line) end end
+		return list
+	end
+
+	local function is_visited(id)
+		for _, v in ipairs(load_visited()) do if v == id then return true end end
+		return false
+	end
+
+	local function save_visited(id)
+		if not id or is_visited(id) then return end
+		local content = ""
+		if readfile then pcall(function() content = readfile(jobids_file) end) end
+		if writefile then pcall(function() writefile(jobids_file, content .. id .. "\n") end) end
+	end
+
+	-- GUI Principal
+	local gui = Instance.new("ScreenGui")
+	gui.Name = "SK_AutoJoiner"
+	gui.ResetOnSpawn = false
+	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+	CollectionService:AddTag(gui, "main")
+
+	-- Frame Principal (Arrastável)
+	local mainFrame = Instance.new("Frame", gui)
+	mainFrame.Size = UDim2.new(0, 280, 0, 160)
+	mainFrame.Position = UDim2.new(0.5, -140, 0, 20)
+	mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+	mainFrame.BorderSizePixel = 0
+	mainFrame.AnchorPoint = Vector2.new(0.5, 0)
+	mainFrame.Active = true
+	mainFrame.Draggable = true
+	
+	local corner = Instance.new("UICorner", mainFrame)
+	corner.CornerRadius = UDim.new(0, 12)
+
+	-- Borda Roxa
+	local stroke = Instance.new("UIStroke", mainFrame)
+	stroke.Color = Color3.fromRGB(138, 43, 226)
+	stroke.Thickness = 2
+
+	-- Título
+	local title = Instance.new("TextLabel", mainFrame)
+	title.Size = UDim2.new(1, 0, 0, 40)
+	title.Position = UDim2.new(0, 0, 0, 0)
+	title.BackgroundTransparency = 1
+	title.Text = "SK COMMUNITY"
+	title.TextSize = 20
+	title.TextColor3 = Color3.fromRGB(255, 255, 255)
+	title.Font = Enum.Font.GothamBold
+
+	-- Gradiente Roxo no Título
+	local titleGrad = Instance.new("UIGradient", title)
+	titleGrad.Color = ColorSequence.new{
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(138, 43, 226)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(186, 85, 211))
+	}
+
+	-- TextBox para quantidade
+	local amountBox = Instance.new("TextBox", mainFrame)
+	amountBox.Size = UDim2.new(0, 240, 0, 35)
+	amountBox.Position = UDim2.new(0.5, -120, 0, 50)
+	amountBox.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+	amountBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+	amountBox.PlaceholderText = "Quantidade mínima"
+	amountBox.PlaceholderColor3 = Color3.fromRGB(150, 150, 150)
+	amountBox.Text = tostring(load_min_gen())
+	amountBox.TextSize = 16
+	amountBox.Font = Enum.Font.Gotham
+	amountBox.ClearTextOnFocus = false
+	
+	local boxCorner = Instance.new("UICorner", amountBox)
+	boxCorner.CornerRadius = UDim.new(0, 8)
+	
+	local boxStroke = Instance.new("UIStroke", amountBox)
+	boxStroke.Color = Color3.fromRGB(138, 43, 226)
+	boxStroke.Thickness = 1
+
+	-- Botão de Auto Teleport
+	local autoButton = Instance.new("TextButton", mainFrame)
+	autoButton.Size = UDim2.new(0, 240, 0, 40)
+	autoButton.Position = UDim2.new(0.5, -120, 0, 100)
+	autoButton.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
+	autoButton.Text = "AUTO TELEPORT"
+	autoButton.TextSize = 16
+	autoButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+	autoButton.Font = Enum.Font.GothamBold
+	
+	local btnCorner = Instance.new("UICorner", autoButton)
+	btnCorner.CornerRadius = UDim.new(0, 8)
+
+	local btnGrad = Instance.new("UIGradient", autoButton)
+	btnGrad.Color = ColorSequence.new{
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(138, 43, 226)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(75, 0, 130))
+	}
+
+	-- Container de Notificações
+	local notifContainer = Instance.new("Frame", gui)
+	notifContainer.Size = UDim2.new(0, 300, 1, 0)
+	notifContainer.Position = UDim2.new(0, 10, 0, 0)
+	notifContainer.BackgroundTransparency = 1
+
+	-- Função para criar notificação
+	local function createNotification(animalGen, jobId)
+		local notif = Instance.new("Frame", notifContainer)
+		notif.Size = UDim2.new(0, 280, 0, 80)
+		notif.Position = UDim2.new(0, 0, 0, 200)
+		notif.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+		notif.BorderSizePixel = 0
+		
+		local notifCorner = Instance.new("UICorner", notif)
+		notifCorner.CornerRadius = UDim.new(0, 10)
+		
+		local notifStroke = Instance.new("UIStroke", notif)
+		notifStroke.Color = Color3.fromRGB(138, 43, 226)
+		notifStroke.Thickness = 2
+
+		local notifText = Instance.new("TextLabel", notif)
+		notifText.Size = UDim2.new(1, -20, 1, -20)
+		notifText.Position = UDim2.new(0, 10, 0, 10)
+		notifText.BackgroundTransparency = 1
+		notifText.Text = string.format("Animal encontrado!\nGen: %s\nClique para teleportar", tostring(animalGen))
+		notifText.TextSize = 14
+		notifText.TextColor3 = Color3.fromRGB(255, 255, 255)
+		notifText.Font = Enum.Font.Gotham
+		notifText.TextWrapped = true
+		notifText.TextYAlignment = Enum.TextYAlignment.Top
+
+		local clickButton = Instance.new("TextButton", notif)
+		clickButton.Size = UDim2.new(1, 0, 1, 0)
+		clickButton.BackgroundTransparency = 1
+		clickButton.Text = ""
+		
+		clickButton.MouseButton1Click:Connect(function()
+			save_visited(jobId)
+			TeleportService:TeleportToPlaceInstance(game.PlaceId, jobId, LocalPlayer)
+		end)
+
+		-- Animação de entrada
+		notif:TweenPosition(UDim2.new(0, 10, 0, 200), Enum.EasingDirection.Out, Enum.EasingStyle.Back, 0.5, true)
+
+		-- Auto-remover após 10 segundos
+		task.delay(10, function()
+			notif:TweenPosition(UDim2.new(0, -300, 0, 200), Enum.EasingDirection.In, Enum.EasingStyle.Quad, 0.3, true, function()
+				notif:Destroy()
+			end)
+		end)
+
+		return notif
+	end
+
+	local running = false
+	local api_url = "https://apiskkk.lovable.app/api/animals"
+
+	local function check_server(min_gen)
+		local body = get(api_url)
+		if not body then return nil end
+		local data = HttpService:JSONDecode(body)
+		
+		-- Adaptar para a estrutura da nova API
+		-- Assumindo que retorna algo como: {animals: [{generation: "X", jobId: "Y"}]}
+		if not data then return nil end
+		
+		-- Tentar diferentes estruturas possíveis
+		local animals = data.animals or data.data or (type(data) == "table" and data) or {}
+		
+		for _, animal in ipairs(animals) do
+			if animal.generation and animal.jobId then
+				local gen = tonumber(tostring(animal.generation):gsub("[^0-9.]", "")) or 0
+				if gen >= min_gen then
+					return {jobId = animal.jobId, generation = gen}
+				end
+			end
+		end
+		
+		return nil
+	end
+
+	autoButton.MouseButton1Click:Connect(function()
+		running = not running
+		autoButton.Text = running and "PARAR" or "AUTO TELEPORT"
+		autoButton.BackgroundColor3 = running and Color3.fromRGB(220, 20, 60) or Color3.fromRGB(138, 43, 226)
+		
+		-- Salvar a quantidade ao iniciar
+		local amount = tonumber(amountBox.Text) or 10
+		save_min_gen(amount)
+		
+		if running then
+			spawn(function()
+				while running do
+					local min_gen = tonumber(amountBox.Text) or 10
+					local result = check_server(min_gen)
+					if result and result.jobId ~= game.JobId and not is_visited(result.jobId) then
+						-- Criar notificação
+						createNotification(result.generation, result.jobId)
+					end
+					wait(2)
+				end
+			end)
+		end
+	end)
+
+	-- Efeito hover no botão
+	autoButton.MouseEnter:Connect(function()
+		autoButton:TweenSize(UDim2.new(0, 250, 0, 42), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.2, true)
+	end)
+
+	autoButton.MouseLeave:Connect(function()
+		autoButton:TweenSize(UDim2.new(0, 240, 0, 40), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.2, true)
+	end)
+end
